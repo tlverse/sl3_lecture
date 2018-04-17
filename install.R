@@ -1,4 +1,5 @@
 install.packages("tidyverse")
+install.packages("rmarkdown")
 install.packages("data.table")
 install.packages("remotes")
 install.packages("rlang")

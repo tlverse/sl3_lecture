@@ -1,14 +1,15 @@
 # `sl3`: Machine Learning with Pipelines in R
 
-> This is an introductory lecture on using the [`sl3` R
-> package](https://sl3.tlverse.org/).
+> This is an introductory lecture on using machine learning pipelines with the
+> [`sl3` R package](https://sl3.tlverse.org/).
 
-Jupyter+R: [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/tlverse/sl3_lecture/master)
-RStudio:
+Jupyter + R: [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/tlverse/sl3_lecture/master?filepath=sl_intro.ipynb)
 
-Both [RStudio](https://www.rstudio.com/) and [IRKernel](https://irkernel.github.io/)
-are installed by default, so you can use either the Jupyter notebook interface or
-the RStudio interface.
+RStudio: [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/tlverse/sl3_lecture/master?urlpath=rstudio)
+
+Both [RStudio](https://www.rstudio.com/) and the Jupyter
+[IRKernel](https://irkernel.github.io/) are installed by default, so you may use
+either the Jupyter notebook interface or the RStudio interface.
 
 ---
 
