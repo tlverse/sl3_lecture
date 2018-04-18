@@ -3,7 +3,7 @@
 > This is an introductory lecture on using machine learning pipelines with the
 > [`sl3` R package](https://sl3.tlverse.org/).
 
-**Jupyter + R:** [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/tlverse/sl3_lecture/master?filepath=sl_intro.ipynb)
+**Jupyter + R:** [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/tlverse/sl3_lecture/master)
 
 **RStudio:** [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/tlverse/sl3_lecture/master?urlpath=rstudio)
 
