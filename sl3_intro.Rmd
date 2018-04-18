@@ -4,7 +4,7 @@ title: 'The [`sl3`](https://sl3.tlverse.org/) R package: Ensemble Machine Learni
 author: '[Nima Hejazi](https://nimahejazi.org) & Jeremy Coyle'
 date: '`r format(Sys.time(), "%Y %b %d (%a), %H:%M:%S")`'
 output:
-  pdf_document:
+  html_document:
     toc: yes
 ---
 
