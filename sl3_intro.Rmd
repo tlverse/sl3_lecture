@@ -1,269 +1,132 @@
 ---
-title: 'The [`sl3`](https://sl3.tlverse.org/) R package: Ensemble Machine Learning
-  with Pipelines'
-author: '[Nima Hejazi](https://nimahejazi.org) & Jeremy Coyle'
-date: '`r format(Sys.time(), "%Y %b %d (%a), %H:%M:%S")`'
+title: "Machine Learning Pipelines for R with sl3"
+date: "04/18/2018"
 output:
-  html_document:
-    toc: yes
+  xaringan::moon_reader:
+    lib_dir: libs
+    chakra: libs/remark-latest.min.js
+    css: ["default", "custom.css"]
+    nature:
+      highlightStyle: zenburn
+      highlightLines: true
+      navigation: {
+        scroll: false
+      }
 ---
 
-Based on materials originally produced by Jeremy Coyle, Nima Hejazi, Ivana
-Malenica, and Oleg Sofrygin
-
-## Introduction
-
-In this demonstration, we will illustrate the basic functionality of the `sl3` R
-package. Specifically, we will walk through the concept of machine learning
-pipelines, the construction of ensemble models, and a few simple optimality
-properties of stacked regression.
-
-## Resources
-
-* The `sl3` R package homepage: https://sl3.tlverse.org/
-* The `sl3` R package repository: https://github.com/tlverse/sl3
-
-## Setup
-
-First, we'll load the packages required for this exercise and load a simple data
-set (`cpp_imputed` below) that we'll use for demonstration purposes:
-
-```{r}
-set.seed(49753)
-
-# packages we'll be using
-library(data.table)
-library(SuperLearner)
-library(origami)
+```{r knitr_setup, echo=FALSE, message=FALSE}
+knitr::opts_chunk$set(fig.width = 7, fig.height = 4.5, dpi = 300,
+                      fig.cap = "", fig.align = "center")
+showtext::showtext.opts(dpi = 300)
 library(sl3)
-
-# load example data set
-data(cpp_imputed)
-
-# take a peek at the data
-head(cpp_imputed)
+library(methods)
 ```
 
-To use this data set with `sl3`, the object must be wrapped in a customized
-`sl3` container, an __`sl3` "Task"__ object. A _task_ is an idiom for all of the
-elements of a prediction problem other than the learning algorithms and
-prediction approach itself -- that is, a task delineates the structure of the
-data set of interest and any potential metadata (e.g., observation-level
-weights).
+class: center, middle
 
-```{r}
-# here are the covariates we are interested in and, of course, the outcome
-covars <- c("apgar1", "apgar5", "parity", "gagebrth", "mage", "meducyrs",
-            "sexn")
-outcome <- "haz"
+# `tlverse`: The Targeted Learning Analytics Ecosystem
 
-# create the sl3 task and take a look at it
-task <- make_sl3_Task(data = cpp_imputed, covariates = covars,
-                            outcome = outcome, outcome_type = "continuous")
+---
 
-# let's take a look at the sl3 task
-task
-```
+# The `tlverse` Ecosystem I
 
-## Interlude: Object Oriented Programming in `R`
+What is the `tlverse`?
 
-`sl3` is designed using basic OOP principles and the `R6` OOP framework. While
-we've tried to make it easy to use `sl3` without worrying much about OOP, it is
-helpful to have some intuition about how `sl3` is structured. In this section,
-we briefly outline some key concepts from OOP. Readers familiar with OOP basics
-are invited to skip this section. The key concept of OOP is that of an object, a
-collection of data and functions that corresponds to some conceptual unit.
-Objects have two main types of elements: (1) _fields_, which can be thought of
-as nouns, are information about an object, and (2) _methods_, which can be
-thought of as verbs, are actions an object can perform. Objects are members of
-classes, which define what those specific fields and methods are. Classes can
-inherit elements from other classes (sometimes called base classes) --
-accordingly, classes that are similar, but not exactly the same, can share some
-parts of their definitions.
+By analogy to [`tidyverse`](https://www.tidyverse.org/):
 
-Many different implementations of OOP exist, with variations in how these
-concepts are implemented and used. R has several different implementations,
-including `S3`, `S4`, reference classes, and `R6`. `sl3` uses the `R6`
-implementation. In `R6`, methods and fields of a class object are accessed using
-the `$` operator. The next section explains how these concepts are used in `sl3`
-to model machine learning problems and algorithms.
+> The tidyverse is an opinionated collection of R packages designed for data science. All packages share an underlying design philosophy, grammar, and data structures. 
 
-## `sl3` Learners
+So, `tlverse` is:
 
-`Lrnr_base` is the base class for defining machine learning algorithms, as well
-as fits for those algorithms to particular `sl3_Tasks`. Different machine
-learning algorithms are defined in classes that inherit from `Lrnr_base`. For
-instance, the `Lrnr_glm` class inherits from `Lrnr_base`, and defines a learner
-that fits generalized linear models. We will use the term learners to refer to
-the family of classes that inherit from `Lrnr_base`. Learner objects can be
-constructed from their class definitions using the `make_learner` function:
+* an opinioned collection of R packages for Targeted Learning
+* sharing an underlying philosophy, grammar, and data structures
 
-```{r}
-# make learner object
-lrnr_glm <- make_learner(Lrnr_glm)
-```
+---
 
-Because all learners inherit from `Lrnr_base`, they have many features in
-common, and can be used interchangeably. All learners define three main methods:
-`train`, `predict`, and `chain`. The first, `train`, takes an `sl3_task` object,
-and returns a `learner_fit`, which has the same class as the learner that was
-trained:
+# The `tlverse` Ecosystem II
 
-```{r}
-# fit learner to task data
-lrnr_glm_fit <- lrnr_glm$train(task)
+These are the main packages that represent the **core** of `tlverse`:
 
-# verify that the learner is fit
-lrnr_glm_fit$is_trained
-```
+--
 
-Here, we fit the learner to the CPP task we defined above. Both `lrnr_glm` and
-`lrnr_glm_fit` are objects of class `Lrnr_glm`, although the former defines a
-learner and the latter defines a fit of that learner. We can distiguish between
-the learners and learner fits using the `is_trained` field, which is true for
-fits but not for learners.
+* [`sl3`](https://github.com/jeremyrcoyle/sl3)
+  * _What?_ A modern object-oriented re-implementation of the Super Learner
+    algorithm, employing recently developed paradigms for `R` programming.
+  * _Why?_ A design that leverages modern tools for fast computation, is
+    forward-looking, and can form one of the cornerstones of the `tlverse`.
 
-Now that we’ve fit a learner, we can generate predictions using the predict
-method:
+--
 
-```{r}
-# get learner predictions
-preds <- lrnr_glm_fit$predict()
-head(preds)
-```
+* [`tmle3`](https://github.com/jeremyrcoyle/tmle3)
+  * _What?_ A generalized framework that simplifies Targeted Learning by
+    identifying and implementing a series of common regression procedures.
+  * _Why?_ A common interface and engine that accommodates current algorithmic
+    approaches to Targeted Learning and is still flexible enough to remain the
+    engine even as new techniques are developed.
 
-Here, we specified task as the task for which we wanted to generate predictions.
-If we had omitted this, we would have gotten the same predictions because
-predict defaults to using the task provided to train (called the training task).
-Alternatively, we could have provided a different task for which we want to
-generate predictions.
+---
 
-The final important learner method, chain, will be discussed below, in the
-section on learner composition. As with `sl3_Task`, learners have a variety of
-fields and methods we haven't discussed here. More information on these is
-available in the help for `Lrnr_base`.
+# The `tlverse` Ecosystem III
 
-## Pipelines
+In addition to the engines that drive development in the `tlverse`, there are
+some supporting packages -- in particular, we have two...
 
-Based on the concept popularized by
-[`scikit-learn`](http://scikit-learn.org/stable/index.html) `sl3` implements the
-notion of [machine learning pipelines](http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html),
-which prove to be useful in a wide variety of data analytic settings.
+--
 
-A pipeline is a set of learners to be fit sequentially, where the fit from one
-learner is used to define the task for the next learner. There are many ways in
-which a learner can define the task for the downstream learner. The chain method
-defined by learners defines how this will work. Let's look at the example of
-pre-screening variables. For now, we'll rely on a screener from the
-`SuperLearner` package, although native `sl3` screening algorithms will be
-implemented soon.
+* [`origami`](https://github.com/jeremyrcoyle/origami)
+  * _What?_ A generalized framework for flexible cross-validation
+  * _Why?_ Cross-validation is a key part of ensuring error estimates are honest
+    and preventing overfitting. It is an essential part of the both the Super
+    Learner algorithm and Targeted Learning.
 
-Below, we generate a screener object based on the `SuperLearner` function
-`screen.corP` and fit it to our task. Inspecting the fit, we see that it
-selected a subset of covariates:
+--
 
-```{r}
-screen_cor <- Lrnr_pkg_SuperLearner_screener$new("screen.corP")
-screen_fit <- screen_cor$train(task)
-print(screen_fit)
-```
+* [`delayed`](https://github.com/jeremyrcoyle/delayed)
+  * _What?_ A framework for delayed computations (futures) based on task
+    dependencies.
+  * _Why?_ Efficient allocation of compute resources is essential when deploying
+    large-scale, computationally intensive algorithms.
 
-The `Pipeline` class automates this process. It takes an arbitrary number of
-learners and fits them sequentially, training and chaining each one in turn.
-Since `Pipeline` is a learner like any other, it shares the same interface. We
-can define a pipeline using `make_learner`, and use `train` and `predict` just
-as we did before:
+---
 
-```{r}
-sg_pipeline <- make_learner(Pipeline, screen_cor, lrnr_glm)
-sg_pipeline_fit <- sg_pipeline$train(task)
-sg_pipeline_preds <- sg_pipeline_fit$predict()
-head(sg_pipeline_preds)
-```
+# `sl3`: Ensemble Learning Pipelines
 
-## Stacks
+* A _new_ framework and engine for optimal ensemble machine learning (Super
+  Learning, stacked regression) that leverages recent developments in the `R`
+  language (e.g., the `R6` OOP framework).
 
-Like `Pipelines`, `Stacks` combine multiple learners. Stacks train learners
-simultaneously, so that their predictions can be either combined or compared.
-Again, `Stack` is just a special learner and so has the same interface as all
-other learners:
+--
 
-```{r}
-stack <- make_learner(Stack, lrnr_glm, sg_pipeline)
-stack_fit <- stack$train(task)
-stack_preds <- stack_fit$predict()
-head(stack_preds)
-```
+* Borrows (steals) good ideas from successful ML frameworks like `scikit-learn`.
 
-Above, we've defined and fit a stack comprised of a simple `glm` learner as well
-as a pipeline that combines a screening algorithm with that same learner. We
-could have included any abitrary set of learners and pipelines, the latter of
-which are themselves just learners. We can see that the predict method now
-returns a matrix, with a column for each learner included in the stack.
+--
 
-## The Super Learner Algorithm
+* _Goal:_ Develop a self-contained ensemble learning engine that is not only
+  faster than previous implementations but flexible enough to be used as the
+  central building block for an ecosystem of Targeted Learning packages.
 
-Having defined a stack, we might want to compare the performance of learners in
-the stack, which we may do using cross-validation. The `Lrnr_cv` learner wraps
-another learner and performs training and prediction in a cross-validated
-fashion, using separate training and validation splits as defined by
-`task$folds`.
+---
 
-Below, we define a new `Lrnr_cv` object based on the previously defined stack
-and train it and generate predictions on the validation set:
+# Interlude: Object Oriented Programming in `Python` and `R` 
 
-```{r}
-cv_stack <- Lrnr_cv$new(stack)
-cv_fit <- cv_stack$train(task)
-cv_preds <- cv_fit$predict()
-```
+* OO concepts (classes with inherentence) were baked into Python from the first published version (version 0.9 in 1991)
 
-```{r}
-risks <- cv_fit$cv_risk(loss_squared_error)
-print(risks)
-```
+--
 
-We can combine all of the above elements, `Pipelines`, `Stacks`, and
-cross-validation using `Lrnr_cv`, to easily define a Super Learner. The Super
-Learner algorithm works by fitting a "meta-learner," which combines predictions
-from multiple stacked learners. It does this while avoiding overfitting by
-training the meta-learner on validation-set predictions in a manner that is
-cross-validated. Using some of the objects we defined in the above examples,
-this becomes a very simple operation:
+* In contrast, `R` gets its OO "approach" from its predecessor, `S`, first released in 1976. For the first 15 years, S had no support for classes, then S got two OO frameworks bolted on in rapid succession: informal classes with S3 in 1991, and formal classes with S4 in 1998.
 
-```{r}
-metalearner <- make_learner(Lrnr_nnls)
-cv_task <- cv_fit$chain()
-ml_fit <- metalearner$train(cv_task)
-```
+--
 
-Here, we used a special learner, Lrnr_nnls, for the meta-learning step. This
-fits a non-negative least squares meta-learner. It is important to note that any
-learner can be used as a meta-learner.
+* This process continues, with new OO frameworks being periodically released, to try to improve the lackluster OO support in R, with reference classes (R5, 2010) and R6 (2014).
 
-The Super Learner finally produced is defined as a pipeline with the learner
-stack trained on the full data and the meta-learner trained on the
-validation-set predictions. Below, we use a special behavior of pipelines: if
-all objects passed to a pipeline are learner fits (i.e., `learner$is_trained` is
-`TRUE`), the result will also be a fit:
+--
 
-```{r}
-sl_pipeline <- make_learner(Pipeline, stack_fit, ml_fit)
-sl_preds <- sl_pipeline$predict()
-head(sl_preds)
-```
+* Of these, R6 behaves most like Python classes (and also most like OOP focused languages like C++ and Java), including having method definitions be part of class definitions, and allowing objects to be modified by reference.
 
-An optimal stacked regression model (or Super Learner) may be fit in a more
-streamlined manner using the `Lrnr_sl` learner. For simplicity, we will use the
-same set of learners and meta-learning algorithm as we did before:
+---
+class: center, middle
 
-```{r}
-sl <- Lrnr_sl$new(learners = stack,
-                  metalearner = metalearner)
-sl_fit <- sl$train(task)
-lrnr_sl_preds <- sl_fit$predict()
-head(lrnr_sl_preds)
-```
+# Juypter Demo
 
-We can see that this generates the same predictions as the more hands-on
-definition above.
+---
+
