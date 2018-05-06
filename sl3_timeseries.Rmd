@@ -1,0 +1,238 @@
+# Time Series Analysis with the [`sl3`](https://sl3.tlverse.org/) R package
+
+## Authors: Ivana Malenica and [Nima Hejazi](https://nimahejazi.org)
+
+## Date: 08 May 2018
+
+### _Attribution:_ based on materials originally produced by Jeremy Coyle, Nima
+Hejazi, Ivana Malenica, and Oleg Sofrygin
+
+## Introduction
+
+In this demonstration, we will illustrate how to use the `sl3` R package for the
+statistical analysis of time series data. We will build on the concepts of
+machine learning pipelines and ensemble models (introduced in other `sl3`
+demos), paying careful attention to how the `sl3` infrastructure can be
+leveraged to generate optimal predictions for dependent data structures where
+many observations are collected on each observational unit.
+
+## Resources
+
+* The `sl3` R package homepage: https://sl3.tlverse.org/
+* The `sl3` R package repository: https://github.com/tlverse/sl3
+
+## Setup
+
+First, we'll load the packages required for this exercise and load a simple data
+set (`cpp_imputed` below) that we'll use for demonstration purposes:
+
+```{r}
+set.seed(49753)
+
+# packages we'll be using
+library(data.table)
+library(origami)
+library(sl3)
+
+# load data
+data(bsds)
+head(bsds)
+```
+
+To use this data set with `sl3`, the object must be wrapped in a customized
+`sl3` container, an __`sl3` "Task"__ object. A _task_ is an idiom for all of the
+elements of a prediction problem other than the learning algorithms and
+prediction approach itself -- that is, a task delineates the structure of the
+data set of interest and any potential metadata (e.g., observation-level
+weights).
+
+```{r}
+# here are the covariates we are interested in and, of course, the outcome
+# specify covariates for sl3 task
+covars <- c("cnt")
+outcome <- "cnt"
+
+# create the sl3 task and take a look at it
+ts_task <- make_sl3_Task(data = bsds, covariates = covars,
+                         outcome = outcome, outcome_type = "continuous")
+
+# let's take a look at the sl3 task
+ts_task
+```
+
+## `sl3` Learners
+
+`Lrnr_base` is the base class for defining machine learning algorithms, as well
+as fits for those algorithms to particular `sl3_Tasks`. Different machine
+learning algorithms are defined in classes that inherit from `Lrnr_base`. All
+learners (e.g., `Lrnr_arima`) inherit from this R6 class. We will use the term
+"learners" to refer to the family of classes that inherit from `Lrnr_base`.
+Learner objects can be constructed from their class definitions using the `make
+learner` function (or more directly through invoking the `$new()` method). Let's
+now look at a simple time series learner, `Lrnr_arima`, which defines
+autoregressive integrated moving average model for univariate time-series.
+
+```{r}
+# make learner object
+lrnr_arima <- Lrnr_arima$new(n.ahead = 1)
+#lrnr_arima <- make_learner(Lrnr_arima)
+```
+
+Because all learners inherit from `Lrnr_base`, they have many features in
+common, and can be used interchangeably. All learners define three main methods:
+`train`, `predict`, and `chain`. The first, `train`, takes an `sl3_task` object,
+and returns a `learner_fit`, which has the same class as the learner that was
+trained:
+
+```{r}
+# fit learner to task data
+fit_arima <- lrnr_arima$train(ts_task)
+
+# verify that the learner is fit
+fit_arima$is_trained
+```
+
+Here, we fit the learner to the time series task we defined above. Both
+`lrnr_arima` and `fit_arima` are objects of class `Lrnr_arima`, although the
+former defines a learner and the latter defines a fit of that learner. We can
+distinguish between the learners and learner fits using the `is_trained` field,
+which is true for fits but not for learners.
+
+Now that we've fit a learner, we can generate predictions using the predict
+method:
+
+```{r}
+# get learner predictions
+pred_arima <- fit_arima$predict()
+head(pred_arima)
+```
+
+Here, we specified task as the task for which we wanted to generate predictions.
+If we had omitted this, we would have gotten the same predictions because
+predict defaults to using the task provided to train (called the training task).
+Alternatively, we could have provided a different task for which we want to
+generate predictions.
+
+The final important learner method, chain, will be discussed below, in the
+section on learner composition. As with `sl3_Task`, learners have a variety of
+fields and methods we haven’t discussed here. More information on these is
+available in the help for `Lrnr_base`.
+
+## Pipelines
+
+Based on the concept popularized by
+[`scikit-learn`](http://scikit-learn.org/stable/index.html) `sl3` implements the
+notion of [machine learning pipelines](http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html),
+which prove to be useful in a wide variety of data analytic settings.
+
+A pipeline is a set of learners to be fit sequentially, where the fit from one
+learner is used to define the task for the next learner. There are many ways in
+which a learner can define the task for the downstream learner. The chain method
+defined by learners defines how this will work.
+
+```{r}
+screen_cor <- Lrnr_pkg_SuperLearner_screener$new("screen.corP")
+screen_fit <- screen_cor$train(task)
+print(screen_fit)
+```
+
+The `Pipeline` class automates this process. It takes an arbitrary number of
+learners and fits them sequentially, training and chaining each one in turn.
+Since `Pipeline` is a learner like any other, it shares the same interface. We
+can define a pipeline using `make_learner`, and use `train` and `predict` just
+as we did before:
+
+```{r}
+sg_pipeline <- make_learner(Pipeline, screen_cor, lrnr_glm)
+sg_pipeline_fit <- sg_pipeline$train(task)
+sg_pipeline_preds <- sg_pipeline_fit$predict()
+head(sg_pipeline_preds)
+```
+
+## Stacks
+
+Like `Pipelines`, `Stacks` combine multiple learners. Stacks train learners
+simultaneously, so that their predictions can be either combined or compared.
+Again, `Stack` is just a special learner and so has the same interface as all
+other learners:
+
+```{r}
+stack <- make_learner(Stack, lrnr_glm, sg_pipeline)
+stack_fit <- stack$train(task)
+stack_preds <- stack_fit$predict()
+head(stack_preds)
+```
+
+Above, we've defined and fit a stack comprised of a simple `glm` learner as well
+as a pipeline that combines a screening algorithm with that same learner. We
+could have included any arbitrary set of learners and pipelines, the latter of
+which are themselves just learners. We can see that the predict method now
+returns a matrix, with a column for each learner included in the stack.
+
+## The Super Learner Algorithm
+
+Having defined a stack, we might want to compare the performance of learners in
+the stack, which we may do using cross-validation. The `Lrnr_cv` learner wraps
+another learner and performs training and prediction in a cross-validated
+fashion, using separate training and validation splits as defined by
+`task$folds`.
+
+Below, we define a new `Lrnr_cv` object based on the previously defined stack
+and train it and generate predictions on the validation set:
+
+```{r}
+cv_stack <- Lrnr_cv$new(stack)
+cv_fit <- cv_stack$train(task)
+cv_preds <- cv_fit$predict()
+```
+
+```{r}
+risks <- cv_fit$cv_risk(loss_squared_error)
+print(risks)
+```
+
+We can combine all of the above elements, `Pipelines`, `Stacks`, and
+cross-validation using `Lrnr_cv`, to easily define a Super Learner. The Super
+Learner algorithm works by fitting a "meta-learner", which combines predictions
+from multiple stacked learners. It does this while avoiding over-fitting by
+training the meta-learner on validation-set predictions in a manner that is
+cross-validated. Using some of the objects we defined in the above examples,
+this becomes a very simple operation:
+
+```{r}
+metalearner <- make_learner(Lrnr_nnls)
+cv_task <- cv_fit$chain()
+ml_fit <- metalearner$train(cv_task)
+```
+
+Here, we used a special learner, `Lrnr_nnls`, for the meta-learning step. This
+fits a non-negative least squares meta-learner. It is important to note that any
+learner can be used as a meta-learner.
+
+The Super Learner finally produced is defined as a pipeline with the learner
+stack trained on the full data and the meta-learner trained on the
+validation-set predictions. Below, we use a special behavior of pipelines: if
+all objects passed to a pipeline are learner fits (i.e., `learner$is_trained` is
+`TRUE`), the result will also be a fit:
+
+```{r}
+sl_pipeline <- make_learner(Pipeline, stack_fit, ml_fit)
+sl_preds <- sl_pipeline$predict()
+head(sl_preds)
+```
+
+An optimal stacked regression model (or Super Learner) may be fit in a more
+streamlined manner using the `Lrnr_sl` learner. For simplicity, we will use the
+same set of learners and meta-learning algorithm as we did before:
+
+```{r}
+sl <- Lrnr_sl$new(learners = stack,
+                  metalearner = metalearner)
+sl_fit <- sl$train(task)
+lrnr_sl_preds <- sl_fit$predict()
+head(lrnr_sl_preds)
+```
+
+We can see that this generates the same predictions as the more hands-on
+definition above.
+
