@@ -38,10 +38,50 @@ set.seed(49753)
 library(data.table)
 library(origami)
 library(sl3)
+library(xts)
 
 # load data
 data(bsds)
 head(bsds)
+
+#Create a time-series object:
+tsdata<-xts(bsds$cnt, order.by=as.POSIXct(bsds$dteday))
+
+#Visualize the time-series:
+PerformanceAnalytics::chart.TimeSeries(tsdata, auto.grid = FALSE, main = "Count of total rental bikes")
+
+```
+
+## Cross-validation
+
+We need to specify proper cross-validation for dependent data. In order to do that, we use the `orgami` package, part of the `tlverse` sofware ecosystem, that supports several different cross-validation techniques for time-series data.
+
+```{r cvs}
+#Define cross-validation approriate for dependent data.
+
+#Rolling origin:
+folds = origami::make_folds(tsdata, fold_fun=folds_rolling_origin, first_window = 10, validation_size = 10, gap = 0, batch = 1)
+folds[[1]]
+folds[[2]]
+
+#We can increase each training sample by batch size:
+folds = origami::make_folds(tsdata, fold_fun=folds_rolling_origin, first_window = 10, validation_size = 10, gap = 0, batch = 10)
+folds[[1]]
+folds[[2]]
+
+#We can also specify how far in the future we want to train our model on.
+folds = origami::make_folds(tsdata, fold_fun=folds_rolling_origin, first_window = 10, validation_size = 10, gap = 5, batch = 10)
+folds[[1]]
+folds[[2]]
+
+#Rolling window:
+folds = origami::make_folds(tsdata, fold_fun=folds_rolling_window, window_size = 10, validation_size = 10, gap = 0, batch = 1)
+folds[[1]]
+folds[[2]]
+
+#Final setup
+folds = origami::make_folds(tsdata, fold_fun=folds_rolling_window, window_size = 50, validation_size = 30, gap = 0, batch = 50)
+
 ```
 
 To use this data set with `sl3`, the object must be wrapped in a customized
@@ -59,7 +99,7 @@ outcome <- "cnt"
 
 # create the sl3 task and take a look at it
 ts_uni_task <- sl3_Task$new(data = bsds, covariates = covars,
-                        outcome = outcome, outcome_type = "continuous")
+                        outcome = outcome, outcome_type = "continuous", folds=folds)
 
 # let's take a look at the sl3 task
 ts_uni_task
