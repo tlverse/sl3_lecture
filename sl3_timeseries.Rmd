@@ -4,7 +4,7 @@
 
 ## Date: 08 May 2018
 
-### _Attribution:_ based on materials originally produced by Jeremy Coyle, Nima
+_Attribution:_ based on materials originally produced by Jeremy Coyle, Nima
 Hejazi, Ivana Malenica, and Oleg Sofrygin
 
 ## Introduction
@@ -23,7 +23,7 @@ many observations are collected on each observational unit.
 
 ```{r global_options, include=FALSE}
 knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
-                      echo=FALSE, warning=FALSE, message=FALSE)
+                      warning=FALSE, message=FALSE)
 ```
 
 ## Setup
