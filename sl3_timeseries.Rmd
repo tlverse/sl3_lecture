@@ -21,6 +21,10 @@ many observations are collected on each observational unit.
 * The `sl3` R package homepage: https://sl3.tlverse.org/
 * The `sl3` R package repository: https://github.com/tlverse/sl3
 
+```{r echo=FALSE, message=FALSE}
+opts_chunk$set(comment = NA, echo=FALSE, message = FALSE, warnings = FALSE)
+```
+
 ## Setup
 
 First, we'll load the packages required for this exercise and load a simple data
@@ -273,7 +277,7 @@ the one we specified above:
 ```{r}
 mv_ts_fit <- mv_ts_stack$train(ts_mv_task)
 mv_ts_pred <- mv_ts_fit$predict()
-print(ms_ts_pred)
+print(mv_ts_pred)
 ```
 
 Next, let's try constructing an ensemble model of these learners using
