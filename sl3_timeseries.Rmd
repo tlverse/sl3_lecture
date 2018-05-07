@@ -275,7 +275,7 @@ mv_ts_stack <- Stack$new(lrnr_tsdyn_linevar, lrnr_tsdyn_vecm)
 Now, let's train these models and predict for a multivariate time series like
 the one we specified above:
 
-```{r multivar_ts_stack_example}
+```{r multivar_ts_stack_example, eval=FALSE}
 mv_ts_fit <- mv_ts_stack$train(ts_mv_task)
 mv_ts_pred <- mv_ts_fit$predict()
 print(mv_ts_pred)
@@ -285,7 +285,7 @@ Next, let's try constructing an ensemble model of these learners using
 cross-validation (note that we'll rely on the same NNLS metalearner we used
 previously):
 
-```{r multivar_ts_sl_example}
+```{r multivar_ts_sl_example, eval=FALSE}
 mv_sl <- Lrnr_sl$new(learners = mv_ts_stack, metalearner = metalearner)
 mv_sl_fit <- mv_sl$train(ts_mv_task)
 mv_sl_pred <- mv_sl_fit$predict()
