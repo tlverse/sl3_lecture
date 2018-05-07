@@ -156,11 +156,11 @@ Again, `Stack` is just a special learner and so has the same interface as all
 other learners:
 
 ```{r}
-ts_stack <- Stack$new(lrnr_arima, lrnr_tsdyn_linear, lrnr_tsdyn_setar,
+ts_uni_stack <- Stack$new(lrnr_arima, lrnr_tsdyn_linear, lrnr_tsdyn_setar,
                       lrnr_tsdyn_lstar)
-ts_stack_fit <- ts_stack$train(task)
-ts_stack_preds <- ts_stack_fit$predict()
-head(ts_stack_preds)
+ts_uni_stack_fit <- ts_uni_stack$train(ts_task)
+ts_uni_stack_preds <- ts_uni_stack_fit$predict()
+head(ts_uni_stack_preds)
 ```
 
 Above, we've defined and fit a stack comprised of a few different classical
@@ -181,8 +181,8 @@ Below, we define a new `Lrnr_cv` object based on the previously defined stack
 and train it and generate predictions on the validation set:
 
 ```{r}
-cv_ts_stack <- Lrnr_cv$new(ts_stack)
-cv_ts_fit <- cv_ts_stack$train(task)
+cv_ts_uni_stack <- Lrnr_cv$new(ts_uni_stack)
+cv_ts_fit <- cv_ts_uni_stack$train(ts_task)
 cv_ts_preds <- cv_ts_fit$predict()
 ```
 
@@ -216,7 +216,7 @@ all objects passed to a pipeline are learner fits (i.e., `learner$is_trained` is
 `TRUE`), the result will also be a fit:
 
 ```{r}
-sl_ts_pipeline <- make_learner(Pipeline, ts_stack_fit, ts_ml_fit)
+sl_ts_pipeline <- make_learner(Pipeline, ts_uni_stack_fit, ts_ml_fit)
 sl_ts_preds <- sl_ts_pipeline$predict()
 head(sl_ts_preds)
 ```
@@ -226,8 +226,8 @@ streamlined manner using the `Lrnr_sl` learner. For simplicity, we will use the
 same set of learners and meta-learning algorithm as we did before:
 
 ```{r}
-lrnr_sl <- Lrnr_sl$new(learners = ts_stack, metalearner = metalearner)
-ts_sl_fit <- lrnr_sl$train(task)
+lrnr_sl <- Lrnr_sl$new(learners = ts_uni_stack, metalearner = metalearner)
+ts_sl_fit <- lrnr_sl$train(ts_task)
 ts_sl_auto_preds <- ts_sl_fit$predict()
 head(ts_sl_auto_preds)
 ```
