@@ -21,8 +21,9 @@ many observations are collected on each observational unit.
 * The `sl3` R package homepage: https://sl3.tlverse.org/
 * The `sl3` R package repository: https://github.com/tlverse/sl3
 
-```{r echo=FALSE, message=FALSE}
-opts_chunk$set(comment = NA, echo=FALSE, message = FALSE, warnings = FALSE)
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
 ```
 
 ## Setup
@@ -30,7 +31,7 @@ opts_chunk$set(comment = NA, echo=FALSE, message = FALSE, warnings = FALSE)
 First, we'll load the packages required for this exercise and load a simple data
 set (`cpp_imputed` below) that we'll use for demonstration purposes:
 
-```{r}
+```{r setup}
 set.seed(49753)
 
 # packages we'll be using
@@ -50,10 +51,10 @@ prediction approach itself -- that is, a task delineates the structure of the
 data set of interest and any potential metadata (e.g., observation-level
 weights).
 
-```{r}
+```{r univariate_ts_task}
 # here are the covariates we are interested in and, of course, the outcome
 # specify covariates for sl3 task
-covars <- c("cnt")
+covars <- "cnt"
 outcome <- "cnt"
 
 # create the sl3 task and take a look at it
@@ -80,7 +81,7 @@ now look at a simple time series learner, `Lrnr_arima`, which defines a
 classical autoregressive integrated moving average model for univariate
 time-series.
 
-```{r}
+```{r arima_instantiate}
 # make learner object
 lrnr_arima <- Lrnr_arima$new(n.ahead = n_ahead_param)
 ```
@@ -91,7 +92,7 @@ common, and can be used interchangeably. All learners define three main methods:
 and returns a `learner_fit`, which has the same class as the learner that was
 trained:
 
-```{r}
+```{r arima_fit}
 # fit learner to task data
 fit_arima <- lrnr_arima$train(ts_uni_task)
 
@@ -108,7 +109,7 @@ which is true for fits but not for learners.
 Now that we've fit a learner, we can generate predictions using the predict
 method:
 
-```{r}
+```{r arima_predict}
 # get learner predictions
 pred_arima <- fit_arima$predict()
 head(pred_arima)
@@ -151,7 +152,7 @@ simultaneously, so that their predictions can be either combined or compared.
 Before proceeding, let's first instantiate a few more standard time series
 learners:
 
-```{r}
+```{r ts_classical_learners}
 lrnr_tsdyn_linear <- Lrnr_tsDyn$new(learner = "linear", m = 1,
                                     n.ahead = n_ahead_param)
 lrnr_tsdyn_setar <- Lrnr_tsDyn$new(learner = "setar", m = 1, model = "TAR",
@@ -167,7 +168,7 @@ lrnr_harmonicreg <- Lrnr_HarmonicReg$new(n.ahead = n_ahead_param, K = 7,
 Again, `Stack` is just a special learner and so has the same interface as all
 other learners:
 
-```{r}
+```{r ts_stack_example}
 ts_stack <- Stack$new(lrnr_arima, lrnr_tsdyn_linear, lrnr_tsdyn_setar,
                       lrnr_tsdyn_lstar)
 ts_stack_fit <- ts_stack$train(ts_uni_task)
@@ -192,13 +193,13 @@ fashion, using separate training and validation splits as defined by
 Below, we define a new `Lrnr_cv` object based on the previously defined stack
 and train it and generate predictions on the validation set:
 
-```{r}
+```{r cv_ts_example}
 cv_ts_stack <- Lrnr_cv$new(ts_stack)
 cv_ts_fit <- cv_ts_stack$train(ts_uni_task)
 cv_ts_preds <- cv_ts_fit$predict()
 ```
 
-```{r}
+```{r cv_ts_risks}
 risks <- cv_ts_fit$cv_risk(loss_squared_error)
 print(risks)
 ```
@@ -211,7 +212,7 @@ avoiding over-fitting by training the meta-learner on validation-set predictions
 in a manner that is cross-validated. Using some of the objects we defined in the
 above examples, this becomes a very simple operation:
 
-```{r}
+```{r ts_sl_manual_part1}
 metalearner <- make_learner(Lrnr_nnls)
 cv_ts_uni_task <- cv_ts_fit$chain()
 ts_ml_fit <- metalearner$train(cv_ts_uni_task)
@@ -227,7 +228,7 @@ validation-set predictions. Below, we use a special behavior of pipelines: if
 all objects passed to a pipeline are learner fits (i.e., `learner$is_trained` is
 `TRUE`), the result will also be a fit:
 
-```{r}
+```{r ts_sl_manual_part2}
 sl_ts_pipeline <- make_learner(Pipeline, ts_stack_fit, ts_ml_fit)
 sl_ts_preds <- sl_ts_pipeline$predict()
 head(sl_ts_preds)
@@ -237,7 +238,7 @@ An optimal stacked regression model (or Super Learner) may be fit in a more
 streamlined manner using the `Lrnr_sl` learner. For simplicity, we will use the
 same set of learners and meta-learning algorithm as we did before:
 
-```{r}
+```{r ts_sl_builtin}
 lrnr_sl <- Lrnr_sl$new(learners = ts_stack, metalearner = metalearner)
 ts_sl_fit <- lrnr_sl$train(ts_uni_task)
 ts_sl_auto_preds <- ts_sl_fit$predict()
@@ -255,14 +256,14 @@ This was useful for illustrative purposes, but, generally speaking, not how most
 applied problems are posed or solved. Below, we consider multivariate time
 series analysis using extensions of the same tools we've seen so far.
 
-```{r}
+```{r multivar_ts_task}
 # Define new data and task:
 covars <- c("temp", "atemp")
 outcome <- c("temp", "atemp")
 ts_mv_task <- sl3_Task$new(bsds, covariates = covars, outcome = outcome)
 ```
 
-```{r}
+```{r multivar_ts_learners}
 # instantiate a few classical multivariate time series learners
 lrnr_tsdyn_linevar <- Lrnr_tsDyn$new(learner = "lineVar", lag = 2,
                                      n.ahead = n_ahead_param)
@@ -274,7 +275,7 @@ mv_ts_stack <- Stack$new(lrnr_tsdyn_linevar, lrnr_tsdyn_vecm)
 Now, let's train these models and predict for a multivariate time series like
 the one we specified above:
 
-```{r}
+```{r multivar_ts_stack_example}
 mv_ts_fit <- mv_ts_stack$train(ts_mv_task)
 mv_ts_pred <- mv_ts_fit$predict()
 print(mv_ts_pred)
@@ -284,7 +285,7 @@ Next, let's try constructing an ensemble model of these learners using
 cross-validation (note that we'll rely on the same NNLS metalearner we used
 previously):
 
-```{r}
+```{r multivar_ts_sl_example}
 mv_sl <- Lrnr_sl$new(learners = mv_ts_stack, metalearner = metalearner)
 mv_sl_fit <- mv_sl$train(ts_mv_task)
 mv_sl_pred <- mv_sl_fit$predict()
