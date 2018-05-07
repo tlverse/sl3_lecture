@@ -58,6 +58,9 @@ ts_uni_task <- sl3_Task$new(data = bsds, covariates = covars,
 
 # let's take a look at the sl3 task
 ts_uni_task
+
+# specify how far out we're going to predict on this univariate time series
+n_ahead_param <- 2
 ```
 
 ## `sl3` Learners
@@ -75,8 +78,7 @@ time-series.
 
 ```{r}
 # make learner object
-lrnr_arima <- Lrnr_arima$new(n.ahead = 5)
-#lrnr_arima <- make_learner(Lrnr_arima)
+lrnr_arima <- Lrnr_arima$new(n.ahead = n_ahead_param)
 ```
 
 Because all learners inherit from `Lrnr_base`, they have many features in
@@ -146,10 +148,16 @@ Before proceeding, let's first instantiate a few more standard time series
 learners:
 
 ```{r}
-lrnr_tsdyn_linear <- Lrnr_tsDyn$new(learner = "linear", m = 1, n.ahead = 5)
+lrnr_tsdyn_linear <- Lrnr_tsDyn$new(learner = "linear", m = 1,
+                                    n.ahead = n_ahead_param)
 lrnr_tsdyn_setar <- Lrnr_tsDyn$new(learner = "setar", m = 1, model = "TAR",
-                                   n.ahead = 5)
-lrnr_tsdyn_lstar <- Lrnr_tsDyn$new(learner = "lstar", m = 1, n.ahead = 5)
+                                   n.ahead = n_ahead_param)
+lrnr_tsdyn_lstar <- Lrnr_tsDyn$new(learner = "lstar", m = 1,
+                                   n.ahead = n_ahead_param)
+lrnr_garch <- Lrnr_rugarch$new(n.ahead = n_ahead_param)
+lrnr_expsmooth <- Lrnr_expSmooth$new(n.ahead = n_ahead_param)
+lrnr_harmonicreg <- Lrnr_HarmonicReg$new(n.ahead = n_ahead_param, K = 7,
+                                         freq = 105)
 ```
 
 Again, `Stack` is just a special learner and so has the same interface as all
@@ -242,4 +250,40 @@ time series data set, where the objective was univariate time series analysis.
 This was useful for illustrative purposes, but, generally speaking, not how most
 applied problems are posed or solved. Below, we consider multivariate time
 series analysis using extensions of the same tools we've seen so far.
+
+```{r}
+# Define new data and task:
+covars <- c("temp", "atemp")
+outcome <- c("temp", "atemp")
+ts_mv_task <- sl3_Task$new(bsds, covariates = covars, outcome = outcome)
+```
+
+```{r}
+# instantiate a few classical multivariate time series learners
+lrnr_tsdyn_linevar <- Lrnr_tsDyn$new(learner = "lineVar", lag = 2,
+                                     n.ahead = n_ahead_param)
+lrnr_tsdyn_vecm <- Lrnr_tsDyn$new(learner = "VECM", lag = 2,
+                                  n.ahead = n_ahead_param, type = "linear")
+mv_ts_stack <- Stack$new(lrnr_tsdyn_linevar, lrnr_tsdyn_vecm)
+```
+
+Now, let's train these models and predict for a multivariate time series like
+the one we specified above:
+
+```{r}
+mv_ts_fit <- mv_ts_stack$train(ts_mv_task)
+mv_ts_pred <- mv_ts_fit$predict()
+print(ms_ts_pred)
+```
+
+Next, let's try constructing an ensemble model of these learners using
+cross-validation (note that we'll rely on the same NNLS metalearner we used
+previously):
+
+```{r}
+mv_sl <- Lrnr_sl$new(learners = mv_ts_stack, metalearner = metalearner)
+mv_sl_fit <- mv_sl$train(ts_mv_task)
+mv_sl_pred <- mv_sl_fit$predict()
+print(mv_sl_pred)
+```
 
